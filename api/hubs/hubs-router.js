@@ -5,18 +5,22 @@ const Messages = require('../messages/messages-model.js');
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
+//----------------------------------------------------------------------------//
+// USING CENTRALIZED ERROR HANDLING
+//----------------------------------------------------------------------------//
+// In the first middleware handler below, we implemented a catch() that calls
+// middleware's next() callback with details about the error. We then added a
+// "whitelisted" property along with the error message, to tell the error
+// handler that the error message is "safe" to send to the client. This is a
+// quick example of the type of logic that handles "whitelisting" of error
+// responses.
+//----------------------------------------------------------------------------//
+router.get('/', (req, res, next) => {
   Hubs.find(req.query)
     .then(hubs => {
       res.status(200).json(hubs);
     })
-    .catch(error => {
-      // log error to server
-      console.log(error);
-      res.status(500).json({
-        message: 'Error retrieving the hubs',
-      });
-    });
+    .catch(error => next({ message: 'Error retrieving the hubs', whitelisted: true }));
 });
 
 router.get('/:id', (req, res) => {
