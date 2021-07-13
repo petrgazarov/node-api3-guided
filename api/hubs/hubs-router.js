@@ -1,26 +1,15 @@
 const express = require('express');
-
 const Hubs = require('./hubs-model.js');
 const Messages = require('../messages/messages-model.js');
 
 const router = express.Router();
 
-//----------------------------------------------------------------------------//
-// USING CENTRALIZED ERROR HANDLING
-//----------------------------------------------------------------------------//
-// In the first middleware handler below, we implemented a catch() that calls
-// middleware's next() callback with details about the error. We then added a
-// "whitelisted" property along with the error message, to tell the error
-// handler that the error message is "safe" to send to the client. This is a
-// quick example of the type of logic that handles "whitelisting" of error
-// responses.
-//----------------------------------------------------------------------------//
 router.get('/', (req, res, next) => {
   Hubs.find(req.query)
     .then(hubs => {
       res.status(200).json(hubs);
     })
-    .catch(error => next({ message: 'Error retrieving the hubs', whitelisted: true }));
+    .catch(error => next({ errorMessage: 'Error retrieving the hubs' }));
 });
 
 router.get('/:id', (req, res) => {
@@ -32,13 +21,7 @@ router.get('/:id', (req, res) => {
         res.status(404).json({ message: 'Hub not found' });
       }
     })
-    .catch(error => {
-      // log error to server
-      console.log(error);
-      res.status(500).json({
-        message: 'Error retrieving the hub',
-      });
-    });
+    .catch(error => next({ errorMessage: 'Error retrieving the hub' }));
 });
 
 router.post('/', (req, res) => {
@@ -46,13 +29,7 @@ router.post('/', (req, res) => {
     .then(hub => {
       res.status(201).json(hub);
     })
-    .catch(error => {
-      // log error to server
-      console.log(error);
-      res.status(500).json({
-        message: 'Error adding the hub',
-      });
-    });
+    .catch(error => next({ errorMessage: 'Error adding the hub' }));
 });
 
 router.delete('/:id', (req, res) => {
@@ -64,13 +41,7 @@ router.delete('/:id', (req, res) => {
         res.status(404).json({ message: 'The hub could not be found' });
       }
     })
-    .catch(error => {
-      // log error to server
-      console.log(error);
-      res.status(500).json({
-        message: 'Error removing the hub',
-      });
-    });
+    .catch(error => next({ errorMessage: 'Error removing the hub' }));
 });
 
 router.put('/:id', (req, res) => {
@@ -82,13 +53,7 @@ router.put('/:id', (req, res) => {
         res.status(404).json({ message: 'The hub could not be found' });
       }
     })
-    .catch(error => {
-      // log error to server
-      console.log(error);
-      res.status(500).json({
-        message: 'Error updating the hub',
-      });
-    });
+    .catch(error => next({ errorMessage: 'Error updating the hub' }));
 });
 
 router.get('/:id/messages', (req, res) => {
@@ -96,13 +61,7 @@ router.get('/:id/messages', (req, res) => {
     .then(messages => {
       res.status(200).json(messages);
     })
-    .catch(error => {
-      // log error to server
-      console.log(error);
-      res.status(500).json({
-        message: 'Error getting the messages for the hub',
-      });
-    });
+    .catch(error => next({ errorMessage: 'Error getting the messages for the hub' }));
 });
 
 router.post('/:id/messages', (req, res) => {
@@ -112,13 +71,25 @@ router.post('/:id/messages', (req, res) => {
     .then(message => {
       res.status(210).json(message);
     })
-    .catch(error => {
-      // log error to server
-      console.log(error);
-      res.status(500).json({
-        message: 'Error adding message to the hub',
-      });
-    });
+    .catch(error => next({ errorMessage: 'Error adding message to the hub' }));
+});
+
+//----------------------------------------------------------------------------//
+// USING CENTRALIZED ERROR HANDLING
+//----------------------------------------------------------------------------//
+// In the route handlers above, we implemented catch() that calls
+// middleware's next() callback with details about the error. We do this
+// to avoid repeating the same logic in route handlers, and to make it easier
+// to manage our error handling code.
+//
+// Note that this error handler processes errors that happen in the hubs router.
+// We have another custom error handler in server.js that would process errors
+// that happen in the root route handler.
+//----------------------------------------------------------------------------//
+router.use((err, req, res, next) => {
+  const message = err?.errorMessage || 'Something went wrong in hubs router';
+
+  res.status(500).json({ message });
 });
 
 module.exports = router;
